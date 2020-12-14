@@ -463,11 +463,12 @@ class Preprocessor:
         # For each molecule ...
         for im, m in enumerate(raw_mol):
 
-            print('Processing '+str(im)+'/'+str(len(raw_mol))+': '+raw_smiles[im]+'.')
+            print('Processing '+str(im + 1)+'/'+str(len(raw_mol))+': '
+                  ''+raw_smiles[im]+'.')
 
             model = MoleculeModel.from_raw_smiles(
-                raw_smiles=raw_smiles,
-                raw_data=raw_data,
+                raw_smiles=raw_smiles[im],
+                raw_data=raw_data[im],
                 add_h=self.add_h,
                 do_shuffle_atoms=self.atoms_shuffled,
                 do_reorder_atoms=self.atoms_ordered,
