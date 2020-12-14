@@ -28,6 +28,8 @@ from typing import List, Callable
 ######################
 #  Helper functions  #
 ######################
+class SmilesException(Exception):
+    pass
 
 
 def read_smiles(smiles,add_h=True):
@@ -39,6 +41,9 @@ def read_smiles(smiles,add_h=True):
     """
 
     mol = Chem.MolFromSmiles(smiles)
+
+    if mol is None:
+        raise SmilesException('MolFromSmiles Failed.')
 
     # Get the molecule from a canonical SMILES string
     mol = Chem.MolFromSmiles( Chem.MolToSmiles(mol,allHsExplicit=True) )
