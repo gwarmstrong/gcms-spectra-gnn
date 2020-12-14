@@ -20,6 +20,9 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 
+# typing
+from typing import List, Callable
+
 
 
 ######################
@@ -225,23 +228,181 @@ def get_bonds_matrix(mol):
     return bonds_matrix
 
 
-#######################
-#  The Dataset Class  #
-#######################
+class ModelError(ValueError):
+    pass
 
 
-class MoleculesDataset(Dataset):
-    """Dataset including coordinates and connectivity."""
+class MoleculeModel:
 
-    def __init__(self, raw_data, raw_smiles, name='molecules', alt_labels=None, elements=None,
+    def __init__(self, smiles, num_at, symbols, at_nums, bonds, coords,
+                 data, mol=None):
+        # Append the SMILES
+        self.smiles: str = smiles
+        # Append the number of atoms
+        self.num_at: int = num_at
+        # Append all atom names and numbers
+        self.symbols: List[str] = symbols
+        self.at_nums: List[int] = at_nums
+        # Append connectivity matrix and coordinates
+        self.bonds: np.array = bonds
+        self.coords: List[np.array] = coords
+        # Append the values of the learned quantities
+        # TODO this is where spectra should be stored
+        self.data = data
+        self.mol = mol
+
+    def to_dict(self):
+        return {
+            'smiles': self.smiles,
+            'num_at': self.num_at,
+            'symbols': self.symbols,
+            'at_nums': self.at_nums,
+            'bonds': self.bonds,
+            'coords': self.coords,
+            'data': self.data,
+        }
+
+    def save(self, file):
+        np.savez(file, self.to_dict())
+
+    @classmethod
+    def from_raw_smiles(cls, raw_smiles, raw_data, add_h=True,
+                        do_shuffle_atoms=False,
+                        do_reorder_atoms=False, max_num_at=None,
+                        max_num_heavy_at=None, elements=None,
+                        num_conformers=1, bond_order=True,
+                        ):
+        # Reading raw data
+        m = read_smiles(raw_smiles, add_h=add_h)
+
+        # Shuffle the atom order
+        if do_reorder_atoms:
+            m = reorder_atoms(m)
+        if do_shuffle_atoms:
+            m = reshuffle_atoms(m)
+
+        return cls.from_smiles(m, raw_data, max_num_at=max_num_at,
+                               max_num_heavy_at=max_num_heavy_at,
+                               elements=elements,
+                               num_conformers=num_conformers,
+                               bond_order=bond_order,
+                               )
+
+    @classmethod
+    def from_smiles(cls, m, raw_data, max_num_at=None,
+                    max_num_heavy_at=None, elements=None,
+                    num_conformers=1, bond_order=True,
+                    ):
+        printer = print
+        raw_num_at    = m.GetNumAtoms()
+        raw_num_heavy = m.GetNumHeavyAtoms()
+        # Read all atom names and numbers
+        new_symbols = [a.GetSymbol() for a in m.GetAtoms()]
+        new_at_nums = [a.GetAtomicNum() for a in m.GetAtoms()]
+
+        # Check if the molecule is small enough
+        small_enough = True
+        if max_num_at is not None:
+            if raw_num_at > max_num_at:
+                small_enough = False
+                printer('Too many atoms. Excluded from dataset.')
+        if max_num_heavy_at is not None:
+            if raw_num_heavy > max_num_heavy_at:
+                small_enough = False
+                printer('Too many heavy atoms. Excluded from dataset.')
+
+        if small_enough:
+
+            # Check for undesired elements
+            if valid_elements(new_symbols, elements):
+
+                # Track error messages
+                Chem.WrapLogs()
+                sio = sys.stderr = StringIO()
+                # Generate the desired number of conformers
+                generate_conformers(m, num_conformers)
+                if 'ERROR' in sio.getvalue():
+                    conf_coord = []
+                    printer(sio.getvalue())
+                else:
+                    # Read the list of the coordinates of all conformers
+                    conf_coord = get_coordinates_of_conformers(m)
+
+                # only proceed if successfully generated conformers
+                if len(conf_coord) > 0:
+                    if bond_order:
+                        # Generate the connectivity matrix with bond orders encoded as (1,1.5,2,3)
+                        conmat = get_bonds_matrix(m)
+                    else:
+                        # Generate the connectivity matrix without bond orders
+                        conmat = get_connectivity_matrix(m)
+
+                    output_smiles = Chem.MolToSmiles(m, allHsExplicit=True)
+                    model = cls(
+                        smiles=output_smiles,
+                        num_at=raw_num_at,
+                        symbols=new_symbols,
+                        at_nums=new_at_nums,
+                        bonds=conmat,
+                        coords=conf_coord,
+                        data=raw_data,
+                        mol=m,
+                    )
+                    return model
+                else:
+                    print('No conformers were generated. Excluded from dataset.')
+
+        return False
+
+    @classmethod
+    def load(cls, file, data_fn: Callable = None, allow_pickle: bool = False):
+        if data_fn is None:
+            def data_fn(data):
+                return data
+
+        npzfile = np.load(file, allow_pickle=allow_pickle)
+        return cls(
+            npzfile['smiles'].item(),
+            npzfile['num_at'].item(),
+            list(npzfile['symbols']),
+            list(npzfile['at_nums']),
+            npzfile['bonds'],
+            npzfile['coords'],
+            data_fn(npzfile['data']),
+        )
+
+    def add_noise(self, width, distribution='uniform'):
+        """ Adds uniform or Gaussian noise to all coordinates.
+            Coordinates are in nanometers.
+
+        Args:
+            width (float): The width of the distribution generating the noise.
+            distribution(str): The distribution from with to draw. Either normal or uniform. Default: uniform.
+
+        """
+        # ... for each conformer ...
+        for j, conf in enumerate(self.coords):
+            # ... and for each atom
+            for k, atom in enumerate(conf):
+                if distribution == 'normal':
+                    # add random numbers from a normal distribution.
+                    self.coords[j][k] += np.random.normal(0.0,width,3)
+                elif distribution == 'uniform':
+                    # add random numbers from a uniform distribution.
+                    self.coords[j][k] += width*(np.random.rand(3) - 0.5)
+
+
+class Preprocessor:
+    def __init__(self, name='molecules', alt_labels=None, elements=None,
                  add_h=True, order_atoms=False, shuffle_atoms=False,
                  num_conf=1, bond_order=True, max_num_at=None, max_num_heavy_at=None,
-                 train_indices_raw=[], vali_indices_raw=[], test_indices_raw=[]):
+                 train_indices_raw=None, vali_indices_raw=None,
+                 test_indices_raw=None,
+                 # TODO directory and prefix
+                 ):
         """Initializes a data set from a column in a CSV file.
 
         Args:
-            csv_file (str): Path to the csv file with the data.
-            col_names (str): Name of the columns with the properties to be trained.
             name (str, opt.): Name of the dataset. Default: 'molecules'.
             alt_labels (list, opt.): Alternative labels for the properties, must be same length as col_names.
             elements (list, opt.): List of permitted elements (Element symbol as str). Default: all elements permitted.
@@ -251,10 +412,19 @@ class MoleculesDataset(Dataset):
 
         """
 
-        # Reading raw data
-        raw_mol       = [read_smiles(s,add_h=add_h) for s in raw_smiles]
-        raw_num_at    = [m.GetNumAtoms() for m in raw_mol]
-        raw_num_heavy = [m.GetNumHeavyAtoms() for m in raw_mol]
+        def none_to_list(arg):
+            if arg is None:
+                return []
+            return arg
+
+        self.add_h = add_h
+        self.alt_labels = alt_labels
+        self.elements = elements
+        self.max_num_at = max_num_at
+        self.max_num_heavy_at = max_num_heavy_at
+        self.train_indices_raw = none_to_list(train_indices_raw)
+        self.vali_indices_raw = none_to_list(vali_indices_raw)
+        self.test_indices_raw = none_to_list(test_indices_raw)
 
         # Intitialize lists for filtered data
         self.smiles    = []
@@ -270,6 +440,9 @@ class MoleculesDataset(Dataset):
         self.vali_idx  = []
         self.test_idx  = []
 
+        # figure out which molecules were saved
+        self.saved = []
+
         # Name of the dataset (some output options require it)
         self.name = name
 
@@ -279,86 +452,88 @@ class MoleculesDataset(Dataset):
         self.num_conformers = num_conf
         self.bond_order     = bond_order
 
+    def transform(self, raw_data, raw_smiles, filenames=None):
         # Initialize new index
         new_index = 0
+
+        # Reading raw data
+        raw_mol       = [read_smiles(s, add_h=self.add_h) for s in raw_smiles]
+        self.saved = []
 
         # For each molecule ...
         for im, m in enumerate(raw_mol):
 
             print('Processing '+str(im)+'/'+str(len(raw_mol))+': '+raw_smiles[im]+'.')
 
-            # Shuffle the atom order
-            if order_atoms:
-                m = reorder_atoms(m)
-            if shuffle_atoms:
-                m = reshuffle_atoms(m)
+            model = MoleculeModel.from_raw_smiles(
+                raw_smiles=raw_smiles,
+                raw_data=raw_data,
+                add_h=self.add_h,
+                do_shuffle_atoms=self.atoms_shuffled,
+                do_reorder_atoms=self.atoms_ordered,
+                max_num_at=self.max_num_at,
+                max_num_heavy_at=self.max_num_heavy_at,
+                elements=self.elements,
+                num_conformers=self.num_conformers,
+                bond_order=self.bond_order,
+            )
+            if model:
+                # Append the molecule
+                print('Added to the dataset.')
+                if im in self.train_indices_raw:
+                    self.train_idx.append(new_index)
+                if im in self.vali_indices_raw:
+                    self.vali_idx.append(new_index)
+                if im in self.test_indices_raw:
+                    self.test_idx.append(new_index)
+                new_index += 1
+                model.save(filenames[im])
+                self.saved.append(True)
+            else:
+                self.saved.append(False)
+                print('Contains undesired elements. Excluded from dataset.')
 
-            # Read all atom names and numbers
-            new_symbols = [a.GetSymbol() for a in m.GetAtoms()]
-            new_at_nums = [a.GetAtomicNum() for a in m.GetAtoms()]
 
-            # Check if the molecule is small enough
-            small_enough = True
-            if max_num_at is not None:
-                if raw_num_at[im] > max_num_at:
-                    small_enough = False
-                    print('Too many atoms. Excluded from dataset.')
-            if max_num_heavy_at is not None:
-                if raw_num_heavy[im] > max_num_heavy_at:
-                    small_enough = False
-                    print('Too many heavy atoms. Excluded from dataset.')
 
-            if small_enough:
+#######################
+#  The Dataset Class  #
+#######################
 
-                # Check for undesired elements
-                if valid_elements(new_symbols,elements):
 
-                    # Track error messages
-                    Chem.WrapLogs()
-                    sio = sys.stderr = StringIO()
-                    # Generate the desired number of conformers
-                    generate_conformers(m, num_conf)
-                    if 'ERROR' in sio.getvalue():
-                        conf_coord = []
-                        print(sio.getvalue())
-                    else:
-                        # Read the list of the coordinates of all conformers
-                        conf_coord = get_coordinates_of_conformers(m)
+class MoleculesDataset(Dataset):
+    """Dataset including coordinates and connectivity."""
+    def __init__(self, preprocessed: Preprocessor):
+        self.add_h = preprocessed.add_h
+        self.alt_labels = preprocessed.alt_labels
+        self.elements = preprocessed.elements
+        self.max_num_at = preprocessed.max_num_at
+        self.max_num_heavy_at = preprocessed.max_num_heavy_at
+        self.train_indices_raw = preprocessed.train_indices_raw
+        self.vali_indices_raw = preprocessed.vali_indices_raw
+        self.test_indices_raw = preprocessed.test_indices_raw
 
-                    # only proceed if successfully generated conformers
-                    if len(conf_coord) > 0:
-                        if self.bond_order:
-                            # Generate the connectivity matrix with bond orders encoded as (1,1.5,2,3)
-                            conmat = get_bonds_matrix(m)
-                        else:
-                            # Generate the connectivity matrix without bond orders
-                            conmat = get_connectivity_matrix(m)
-                        # Append the molecule
-                        self.mol.append(m)
-                        # Append the SMILES
-                        self.smiles.append( raw_smiles[im] )
-                        # Append the number of atoms
-                        self.num_at.append( raw_num_at[im] )
-                        # Append all atom names and numbers
-                        self.symbols.append( new_symbols )
-                        self.at_nums.append( new_at_nums )
-                        # Append connectivity matrix and coordinates
-                        self.bonds.append(conmat)
-                        self.coords.append(conf_coord)
-                        # Append the values of the learned quantities
-                        self.data.append(raw_data[im])
-                        print('Added to the dataset.')
-                        if im in train_indices_raw:
-                            self.train_idx.append(new_index)
-                        if im in vali_indices_raw:
-                            self.vali_idx.append(new_index)
-                        if im in test_indices_raw:
-                            self.test_idx.append(new_index)
-                        new_index += 1
-                    else:
-                        print('No conformers were generated. Excluded from dataset.')
-                else:
-                    print('Contains undesired elements. Excluded from dataset.')
+        # Intitialize lists for filtered data
+        self.smiles    = preprocessed.smiles
+        self.num_at    = preprocessed.num_at
+        self.symbols   = preprocessed.symbols
+        self.at_nums   = preprocessed.at_nums
+        self.bonds     = preprocessed.bonds
+        self.coords    = preprocessed.coords
+        self.data      = preprocessed.data
+        self.mol       = preprocessed.mol
+
+        self.train_idx = preprocessed.train_idx
+        self.vali_idx  = preprocessed.vali_idx
+        self.test_idx  = preprocessed.test_idx
+
+        # Name of the dataset (some output options require it)
+        self.name = preprocessed.name
+
+        # Save properties
+        self.atoms_ordered  = preprocessed.atoms_ordered
+        self.atoms_shuffled = preprocessed.atoms_shuffled
+        self.num_conformers = preprocessed.num_conformers
+        self.bond_order     = preprocessed.bond_order
 
 
     def __len__(self):
