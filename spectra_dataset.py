@@ -55,6 +55,14 @@ def read_smiles(smiles,add_h=True):
     return mol
 
 
+def safe_read_smiles(smiles, add_h):
+    try:
+        mol = read_smiles(smiles, add_h)
+        return mol
+    except SmilesException:
+        return False
+
+
 def valid_elements(symbols,reference):
     """Tests a list for elements that are not in the reference.
 
@@ -462,7 +470,8 @@ class Preprocessor:
         new_index = 0
 
         # Reading raw data
-        raw_mol       = [read_smiles(s, add_h=self.add_h) for s in raw_smiles]
+        raw_mol       = [safe_read_smiles(s, add_h=self.add_h) for s in
+                         raw_smiles]
         self.saved = []
 
         # For each molecule ...
@@ -470,6 +479,9 @@ class Preprocessor:
 
             print('Processing '+str(im + 1)+'/'+str(len(raw_mol))+': '
                   ''+raw_smiles[im]+'.')
+            if not raw_mol:
+                self.saved.append(False)
+                continue
 
             model = MoleculeModel.from_raw_smiles(
                 raw_smiles=raw_smiles[im],
