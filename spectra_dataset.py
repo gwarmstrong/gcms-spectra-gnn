@@ -276,7 +276,7 @@ class MoleculeModel:
         }
 
     def save(self, file):
-        np.savez(file, self.to_dict())
+        np.savez(file, **self.to_dict())
 
     @classmethod
     def from_raw_smiles(cls, raw_smiles, raw_data, add_h=True,
