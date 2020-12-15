@@ -15,3 +15,40 @@ def ohe_molecules(symbols, elements=None):
     ohe = np.zeros((len(symbols), len(elements)))
     ohe[np.arange(len(positions)), positions] = 1
     return torch.tensor(ohe)
+
+
+class OneHotSpectrumEncoder:
+
+    def __init__(self, min_=20, max_=500):
+        """
+        Parameters
+        ----------
+        min_ : int
+            Lowest allowed m/z. Values lower are excluded.
+        max_ : int
+            Highest allowed m/z. Values higher are excluded.
+
+        """
+        self.min_ = min_
+        self.max_ = max_
+        self.width = max_ - min_ + 1
+
+    def __call__(self, model):
+        """
+        Parameters
+        ----------
+
+        model : MoleculeModel
+
+        Returns
+        -------
+        torch.tensor
+            One hot encoding of the molecules atoms
+
+        """
+        y = np.zeros([1, self.width])
+        for i, idx in enumerate(model.data[0, :]):
+            idx = int(idx)
+            if (idx >= self.min_) and (idx <= self.max_):
+                y[0, idx - self.min_] = model.data[1, i]
+        return torch.tensor(y)
