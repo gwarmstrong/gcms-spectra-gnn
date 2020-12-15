@@ -5,19 +5,6 @@ import json
 from gcms_spectra_gnn.molecule import MoleculeModel
 from torch.utils.data import Dataset
 from scipy.sparse import coo_matrix
-from molecule import ohe_molecules
-
-
-def basic_dgl_transform(molecule_model):
-    """
-    Transforms a molecular model into a dgl object
-
-    TODO:  Change to a pytorch module.
-    """
-    G = dgl.from_scipy(coo_matrix(molecule_model.bonds))
-    # TODO figure out some features!
-    G.ndata['mol_ohe'] = ohe_molecules(molecule_model.symbols)
-    return G
 
 
 class MoleculeJSONDataset(Dataset):
