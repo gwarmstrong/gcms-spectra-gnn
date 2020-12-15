@@ -1,9 +1,11 @@
 import os
 import dgl
+import json
 
 from gcms_spectra_gnn.molecule import MoleculeModel
 from torch.utils.data import Dataset
 from scipy.sparse import coo_matrix
+from molecule import ohe_molecules
 
 
 def basic_dgl_transform(molecule_model):
@@ -25,7 +27,7 @@ class MoleculeJSONDataset(Dataset):
         with open(os.path.join(library_path, 'index.json')) as fh:
             library = json.load(fh)
 
-        library = [info for info in library_info
+        library = [info for info in library
                    if os.path.exists(library_path + info['FP_PATH'])]
 
         self.library = [entry for entry in library if entry.get('FP_PATH')]
