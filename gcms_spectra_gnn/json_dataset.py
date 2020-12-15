@@ -19,9 +19,17 @@ def basic_dgl_transform(molecule_model):
 
 
 class MoleculeJSONDataset(Dataset):
-    def __init__(self, library, root_dir, graph_transform=None, label_transform=None):
+    def __init__(self, library_path, graph_transform=None,
+                 label_transform=None):
+
+        with open(os.path.join(library_path, 'index.json')) as fh:
+            library = json.load(fh)
+
+        library = [info for info in library_info
+                   if os.path.exists(library_path + info['FP_PATH'])]
+
         self.library = [entry for entry in library if entry.get('FP_PATH')]
-        self.root_dir = root_dir
+        self.root_dir = os.path.dirname(library)
         self.graph_transform = graph_transform
         self.label_transform = label_transform
 
