@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import dgl.function as fn
 from functools import partial
+from dgl.nn.pytorch.glob import SumPooling
 
 
 dgl_gcn_msg_fxn = fn.copy_src(src='h', out='m')
@@ -27,13 +28,12 @@ class GCNLayer(nn.Module):
 
 
 class Net(nn.Module):
-    def __init__(self, input_features, output_features, agg=None):
+    def __init__(self, input_features, output_features):
         super(Net, self).__init__()
         self.layer1 = GCNLayer(input_features, 16)
         self.layer2 = GCNLayer(16, output_features)
         self.linear_layer = nn.Linear(output_features, output_features)
-        if agg is None:
-            self.agg = partial(torch.sum, dim=0, keepdims=True)
+        self.agg = SumPooling()
 
     def forward(self, g, features):
         x = F.relu(self.layer1(g, features))
