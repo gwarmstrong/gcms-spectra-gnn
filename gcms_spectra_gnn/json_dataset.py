@@ -1,12 +1,37 @@
+import os
+import dgl
+import json
+
 from gcms_spectra_gnn.molecule import MoleculeModel
 from torch.utils.data import Dataset
-import os
+from scipy.sparse import coo_matrix
+from molecule import ohe_molecules
+
+
+def basic_dgl_transform(molecule_model):
+    """
+    Transforms a molecular model into a dgl object
+
+    TODO:  Change to a pytorch module.
+    """
+    G = dgl.from_scipy(coo_matrix(molecule_model.bonds))
+    # TODO figure out some features!
+    G.ndata['mol_ohe'] = ohe_molecules(molecule_model.symbols)
+    return G
 
 
 class MoleculeJSONDataset(Dataset):
-    def __init__(self, library, root_dir, graph_transform=None, label_transform=None):
+    def __init__(self, library_path, graph_transform=None,
+                 label_transform=None):
+
+        with open(os.path.join(library_path, 'index.json')) as fh:
+            library = json.load(fh)
+
+        library = [info for info in library
+                   if os.path.exists(library_path + info['FP_PATH'])]
+
         self.library = [entry for entry in library if entry.get('FP_PATH')]
-        self.root_dir = root_dir
+        self.root_dir = os.path.dirname(library)
         self.graph_transform = graph_transform
         self.label_transform = label_transform
 
