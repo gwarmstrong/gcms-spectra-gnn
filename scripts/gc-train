@@ -22,7 +22,6 @@ def main(args):
         max_epochs=args.epochs,
         gpus=args.gpus,
         num_nodes=args.nodes,
-        gradient_clip_val=args.grad_clip,
         # check_val_every_n_epoch=1,
         val_check_interval=0.25,
         # set this to true when debugging
