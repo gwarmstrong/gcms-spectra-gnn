@@ -9,10 +9,6 @@ from gcms_spectra_gnn.molecule import (
 from torch.utils.data import DataLoader
 
 
-DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br',
-                    'I', 'P', 'Si']
-
-
 class GCLightning(pl.LightningModule):
 
     def __init__(self, args, model_init_args):
@@ -77,6 +73,10 @@ class GCLightning(pl.LightningModule):
         G, spec = batch
         # TODO: push data to GPU
         pred = self.net(G, G.ndata['mol_ohe'])
+        print("-------------------------------------------------")
+        print(pred)
+        print(spec)
+        print("-------------------------------------------------")
         loss = nn.MSELoss(pred, spec)
         # TODO: add more metrics as needed
         # Note that there is redundancy, which is OK

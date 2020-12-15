@@ -3,7 +3,8 @@ import torch
 import dgl
 from scipy.sparse import coo_matrix
 
-DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'I', 'P']
+DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br',
+                    'I', 'P', 'Si']
 
 
 def basic_dgl_transform(model):
@@ -23,7 +24,7 @@ def ohe_molecules(symbols, elements=None):
         positions[i] = elements.index(atom)
     ohe = np.zeros((len(symbols), len(elements)))
     ohe[np.arange(len(positions)), positions] = 1
-    return torch.tensor(ohe)
+    return torch.tensor(ohe).float()
 
 
 class OneHotSpectrumEncoder:
