@@ -75,6 +75,9 @@ class GCLightning(pl.LightningModule):
             '--batch-size', help='Training batch size',
             required=False, type=int, default=32)
         parser.add_argument(
+            '--epochs', help='Number of epochs to train.',
+            required=False, type=int, default=100)
+        parser.add_argument(
             '-o', '--output-directory',
             help='Output directory of model results', required=True)
         # TODO: hash out these args
