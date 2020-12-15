@@ -1,22 +1,35 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from gcms_spectra_gnn.layers import Net
+import argparse
+from gcms_spectra_gnn.models import Net
 from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset
 from gcms_spectra_gnn.transforms import (
     basic_dgl_transform, one_hot_spectrum_encoder)
+from torch.utils.data import DataLoader
 
 
-DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'I', 'P']
+DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br',
+                    'I', 'P', 'Si']
 
 
 class GCLightning(pl.LightningModule):
 
-    def __init__(self, args):
+    def __init__(self, args, model_init_args):
+        super(GCLightning, self).__init__()
+        """
+        Constructs the trainer
+
+        Parameters
+        ----------
+        args : dict
+            Training arguments
+        args : dict
+            Arguments for initializing the model.
+        """
         self.hparams = args
         # TODO: how to init??
-        self.net = Net(len(DEFAULT_ELEMENTS),
-                       length)
+        self.net = Net(**model_init_args)
 
     def forward(self, smiles):
         """
@@ -72,7 +85,7 @@ class GCLightning(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
-            net.parameters(), lr=self.hparams.learning_rate)
+            self.net.parameters(), lr=self.hparams.learning_rate)
         return optimizer
 
     @staticmethod

@@ -2,7 +2,8 @@ import os
 import dgl
 import json
 
-from gcms_spectra_gnn.molecule import MoleculeModel
+from gcms_spectra_gnn.spectra_dataset import MoleculeModel
+from gcms_spectra_gnn.molecule import ohe_molecules
 from torch.utils.data import Dataset
 from scipy.sparse import coo_matrix
 
