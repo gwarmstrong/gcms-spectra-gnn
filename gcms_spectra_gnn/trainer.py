@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from gcms_spectra_gnn.layers import Net
-from gcms_spectra_gnn.dataset import MoleculeJSONDataset
+from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset
 
 
 DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'I', 'P']
@@ -27,12 +27,26 @@ class GCLightning(pl.LightningModule):
         pass
 
     def train_dataloader(self):
-        # TODO:
-        return MoleculeJSONDataset()
+        train_dataset = MoleculeJSONDataset(
+            self.hparams.train_library
+            # TODO: fix the transforms
+        )
+        train_dataloader = DataLoader(
+            train_dataset, batch_size=1,
+            shuffle=True, num_workers=self.hparams.num_workers,
+            pin_memory=True)
+        return train_dataloader
 
     def val_dataloader(self):
-        # TODO:
-        return MoleculeJSONDataset()
+        valid_dataset = MoleculeJSONDataset(
+            self.hparams.valid_library
+            # TODO: fix the transforms
+        )
+        valid_dataloader = DataLoader(
+            valid_dataset, batch_size=1,
+            shuffle=True, num_workers=self.hparams.num_workers,
+            pin_memory=True)
+        return valid_dataloader
 
     def training_step(self, batch, batch_idx):
         self.net.train()
@@ -63,11 +77,14 @@ class GCLightning(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = argparse.ArgumentParser(parent_parser)
         parser.add_argument(
-            '--train-pairs', help='Training pairs file', required=True)
+            '--train-library', help='Training library file',
+            required=True)
         parser.add_argument(
-            '--test-pairs', help='Testing pairs file', required=True)
+            '--test-library', help='Testing library file',
+            required=True)
         parser.add_argument(
-            '--valid-pairs', help='Validation pairs file', required=True)
+            '--valid-library', help='Validation library file',
+            required=True)
         parser.add_argument(
             '--learning-rate', help='Learning rate',
             required=False, type=float, default=1e-3)
