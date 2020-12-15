@@ -4,8 +4,8 @@ import pytorch_lightning as pl
 import argparse
 from gcms_spectra_gnn.models import Net
 from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset
-from gcms_spectra_gnn.transforms import (
-    basic_dgl_transform, one_hot_spectrum_encoder)
+from gcms_spectra_gnn.molecule import (
+    basic_dgl_transform, OneHotSpectrumEncoder)
 from torch.utils.data import DataLoader
 
 
@@ -30,6 +30,7 @@ class GCLightning(pl.LightningModule):
         self.hparams = args
         # TODO: how to init??
         self.net = Net(**model_init_args)
+        self.label_transform = OneHotSpectrumEncoder()
 
     def forward(self, smiles):
         """
@@ -43,9 +44,11 @@ class GCLightning(pl.LightningModule):
 
     def train_dataloader(self):
         train_dataset = MoleculeJSONDataset(
-            self.hparams.train_library
+            self.hparams.train_library,
             graph_transform=basic_dgl_transform,
-            label_transform=one_hot_spectrum_encoder)
+            label_transform=self.label_transform)
+        print("train dataset length:", len(train_dataset))
+        assert(len(train_dataset) > 0)
         train_dataloader = DataLoader(
             train_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,
@@ -56,7 +59,9 @@ class GCLightning(pl.LightningModule):
         valid_dataset = MoleculeJSONDataset(
             self.hparams.valid_library,
             graph_transform=basic_dgl_transform,
-            label_transform=one_hot_spectrum_encoder)
+            label_transform=self.label_transform)
+        print("valid dataset length:", len(valid_dataset))
+        assert(len(valid_dataset) > 0)
         valid_dataloader = DataLoader(
             valid_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,

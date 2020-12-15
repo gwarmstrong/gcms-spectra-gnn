@@ -12,14 +12,15 @@ class MoleculeJSONDataset(Dataset):
     def __init__(self, library_path, graph_transform=None,
                  label_transform=None):
 
-        with open(os.path.join(library_path, 'index.json')) as fh:
+        # with open(os.path.join(library_path, 'index.json')) as fh:
+        with open(library_path) as fh:
             library = json.load(fh)
-
+        
+        self.root_dir = os.path.dirname(library_path) + "/"
         library = [info for info in library
-                   if os.path.exists(library_path + info['FP_PATH'])]
-
+                   if os.path.exists(self.root_dir + info['FP_PATH'])]
+        
         self.library = [entry for entry in library if entry.get('FP_PATH')]
-        self.root_dir = os.path.dirname(library)
         self.graph_transform = graph_transform
         self.label_transform = label_transform
 

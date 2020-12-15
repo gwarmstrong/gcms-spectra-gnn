@@ -1,8 +1,17 @@
 import numpy as np
 import torch
+import dgl
+from scipy.sparse import coo_matrix
 
 DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'I', 'P']
 
+
+def basic_dgl_transform(model):
+    G = dgl.from_scipy(coo_matrix(model.bonds))
+    # TODO figure out some features!
+    G.ndata['mol_ohe'] = ohe_molecules(model.symbols)
+    return G
+        
 
 def ohe_molecules(symbols, elements=None):
     # TODO this might error if we get something not in elements
