@@ -1,11 +1,20 @@
 import os
 import dgl
 import json
+import torch
 
 from gcms_spectra_gnn.spectra_dataset import MoleculeModel
 from gcms_spectra_gnn.molecule import ohe_molecules
 from torch.utils.data import Dataset
 from scipy.sparse import coo_matrix
+
+
+def collate_graphs(samples):
+    # The input `samples` is a list of pairs
+    #  (graph, label).
+    graphs, labels = map(list, zip(*samples))
+    batched_graph = dgl.batch(graphs)
+    return batched_graph, torch.cat(labels)
 
 
 class MoleculeJSONDataset(Dataset):

@@ -3,7 +3,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 import argparse
 from gcms_spectra_gnn.models import Net
-from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset
+from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset, collate_graphs
 from gcms_spectra_gnn.molecule import (
     basic_dgl_transform, OneHotSpectrumEncoder)
 from torch.utils.data import DataLoader
@@ -52,7 +52,9 @@ class GCLightning(pl.LightningModule):
         train_dataloader = DataLoader(
             train_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,
-            pin_memory=True)
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
         return train_dataloader
 
     def val_dataloader(self):
@@ -65,7 +67,9 @@ class GCLightning(pl.LightningModule):
         valid_dataloader = DataLoader(
             valid_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,
-            pin_memory=True)
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
         return valid_dataloader
 
     def training_step(self, batch, batch_idx):
