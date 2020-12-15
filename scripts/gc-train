@@ -11,11 +11,11 @@ from gcms_spectra_gcnn.trainer import GCLightning
 
 def main(args):
     print('args', args)
-    if args.load_from_checkpoint is not None:
-        model = GCLightning.load_from_checkpoint(
-            args.load_from_checkpoint)
-    else:
-        model = GCLightning(args)
+    # if args.load_from_checkpoint is not None:
+    #     model = GCLightning.load_from_checkpoint(
+    #         args.load_from_checkpoint)
+    # else:
+    model = GCLightning(args)
     # profiler = AdvancedProfiler()
 
     trainer = Trainer(
@@ -49,7 +49,7 @@ def main(args):
     trainer.checkpoint_callback = checkpoint_callback
     print('model', model)
     trainer.fit(model)
-    trainer.test()
+    # trainer.test()
 
     # In case this doesn't checkpoint
     torch.save(model.state_dict(),
