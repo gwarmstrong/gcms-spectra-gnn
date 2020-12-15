@@ -73,11 +73,8 @@ class GCLightning(pl.LightningModule):
         G, spec = batch
         # TODO: push data to GPU
         pred = self.net(G, G.ndata['mol_ohe'])
-        print("-------------------------------------------------")
-        print(pred)
-        print(spec)
-        print("-------------------------------------------------")
-        loss = nn.MSELoss(pred, spec)
+        #loss = nn.MSELoss(pred, spec)
+        loss = ((pred - spec)**2).mean()
         # TODO: add more metrics as needed
         # Note that there is redundancy, which is OK
         tensorboard_logs = {'train_loss': loss}
@@ -87,7 +84,7 @@ class GCLightning(pl.LightningModule):
         G, spec = batch
         # TODO: push data to GPU
         pred = self.net(G, G.ndata['mol_ohe'])
-        loss = nn.MSELoss(pred, spec)
+        loss = ((pred - spec)**2).mean()
         # TODO: add more metrics as needed (i.e. AUPR, ...)
         tensorboard_logs = {'valid_loss': loss}
         return {'valid_loss': loss, 'log': tensorboard_logs}

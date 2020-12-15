@@ -6,7 +6,8 @@ import os
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from gcms_spectra_gnn.trainer import GCLightning, DEFAULT_ELEMENTS
+from gcms_spectra_gnn.trainer import GCLightning
+from gcms_spectra_gnn.molecule import DEFAULT_ELEMENTS
 
 
 def main(args):
@@ -31,7 +32,7 @@ def main(args):
         # auto_scale_batch_size='power',
         # profiler=profiler,
     )
-    
+
     ### CHECKPOINTS NEED FIXIN
     # ckpt_path = os.path.join(
     #     args.output_directory,

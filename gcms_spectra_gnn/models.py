@@ -38,6 +38,6 @@ class Net(nn.Module):
     def forward(self, g, features):
         x = F.relu(self.layer1(g, features))
         x = self.layer2(g, x)
-        x = self.agg(x)
+        x = self.agg(g, x)
         x = F.relu(self.linear_layer(x))
         return x
