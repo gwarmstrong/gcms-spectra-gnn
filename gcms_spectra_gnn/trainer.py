@@ -3,6 +3,8 @@ import torch.nn as nn
 import pytorch_lightning as pl
 from gcms_spectra_gnn.layers import Net
 from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset
+from gcms_spectra_gnn.transforms import (
+    basic_dgl_transform, one_hot_spectrum_encoder)
 
 
 DEFAULT_ELEMENTS = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'I', 'P']
@@ -29,8 +31,8 @@ class GCLightning(pl.LightningModule):
     def train_dataloader(self):
         train_dataset = MoleculeJSONDataset(
             self.hparams.train_library
-            # TODO: fix the transforms
-        )
+            graph_transform=basic_dgl_transform,
+            label_transform=one_hot_spectrum_encoder)
         train_dataloader = DataLoader(
             train_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,
@@ -39,9 +41,9 @@ class GCLightning(pl.LightningModule):
 
     def val_dataloader(self):
         valid_dataset = MoleculeJSONDataset(
-            self.hparams.valid_library
-            # TODO: fix the transforms
-        )
+            self.hparams.valid_library,
+            graph_transform=basic_dgl_transform,
+            label_transform=one_hot_spectrum_encoder)
         valid_dataloader = DataLoader(
             valid_dataset, batch_size=1,
             shuffle=True, num_workers=self.hparams.num_workers,
