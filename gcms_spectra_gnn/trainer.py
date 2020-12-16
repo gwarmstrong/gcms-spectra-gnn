@@ -119,4 +119,9 @@ class GCLightning(pl.LightningModule):
             '-o', '--output-directory',
             help='Output directory of model results', required=True)
         # TODO: hash out these args
+        parser.add_argument(
+            '--hidden-features',
+            help='Number of features in the hidden graph layer', type=int,
+            default=100,
+        )
         return parser

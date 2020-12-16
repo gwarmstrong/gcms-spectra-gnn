@@ -28,10 +28,10 @@ class GCNLayer(nn.Module):
 
 
 class Net(nn.Module):
-    def __init__(self, input_features, output_features):
+    def __init__(self, input_features, output_features, hidden_features):
         super(Net, self).__init__()
-        self.layer1 = GCNLayer(input_features, 16)
-        self.layer2 = GCNLayer(16, output_features)
+        self.layer1 = GCNLayer(input_features, hidden_features)
+        self.layer2 = GCNLayer(hidden_features, output_features)
         self.linear_layer = nn.Linear(output_features, output_features)
         self.agg = SumPooling()
 

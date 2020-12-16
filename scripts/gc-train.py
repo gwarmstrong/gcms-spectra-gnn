@@ -17,7 +17,9 @@ def main(args):
     #         args.load_from_checkpoint)
     # else:
     model_args = {"input_features": len(DEFAULT_ELEMENTS),
-                  "output_features": 481}
+                  "output_features": 481,
+                  "hidden_features": args.hidden_features,
+                  }
     model = GCLightning(args, model_args)
     # profiler = AdvancedProfiler()
 
