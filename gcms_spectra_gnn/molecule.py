@@ -21,7 +21,10 @@ def ohe_molecules(symbols, elements=None):
         elements = DEFAULT_ELEMENTS
     positions = np.zeros(len(symbols)).astype(int)
     for i, atom in enumerate(symbols):
-        positions[i] = elements.index(atom)
+        # adding this because I encountered a misc. 'B'
+        # could also add 'B' to default elements
+        if atom in elements:
+            positions[i] = elements.index(atom)
     ohe = np.zeros((len(symbols), len(elements)))
     ohe[np.arange(len(positions)), positions] = 1
     return torch.tensor(ohe).float()
