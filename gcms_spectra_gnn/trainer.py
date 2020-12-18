@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 import pytorch_lightning as pl
 import argparse
 from gcms_spectra_gnn.models import Net
@@ -34,6 +35,12 @@ class GCLightning(pl.LightningModule):
         self.input_transform = basic_dgl_transform
         self.label_transform = OneHotSpectrumEncoder()
         self.loss_fn = mse_loss
+        self.eval_metrics = [
+            ('cosine', nn.CosineSimilarity())
+        ]
+
+    def _calc_eval_metrics(self, pred, label):
+        return {key: fn(pred, label) for key, fn in self.eval_metrics}
 
     def forward(self, smiles):
         """
@@ -90,6 +97,7 @@ class GCLightning(pl.LightningModule):
         # TODO: cosine similarity
         # Note that there is redundancy, which is OK
         tensorboard_logs = {'train_loss': loss}
+        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
         return {'loss': loss, 'log': tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
@@ -99,6 +107,7 @@ class GCLightning(pl.LightningModule):
         loss = self.loss_fn(pred, spec)
         # TODO: add more metrics as needed (i.e. AUPR, ...)
         tensorboard_logs = {'valid_loss': loss}
+        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
         return {'valid_loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
