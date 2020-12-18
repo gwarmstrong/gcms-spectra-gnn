@@ -8,4 +8,4 @@ class TestTrainer(object):
     def test_initialization(self, in_feats, out_feats):
         model_args = {"input_features": in_feats, "output_features": out_feats}
         training_args = {}
-        my_trainer = GCLightning(training_args, model_args)
+        GCLightning(training_args, model_args)

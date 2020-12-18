@@ -1,8 +1,6 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import dgl.function as fn
-from functools import partial
 from dgl.nn.pytorch.glob import SumPooling
 
 
@@ -35,7 +33,8 @@ class Net(nn.Module):
         self.linear_layer = nn.Linear(output_features, output_features)
         self.agg = SumPooling()
 
-    def forward(self, g, features):
+    def forward(self, g):
+        features = g.ndata['mol_ohe']
         x = F.relu(self.layer1(g, features))
         x = self.layer2(g, x)
         x = self.agg(g, x)

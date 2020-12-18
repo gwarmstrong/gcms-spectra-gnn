@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 
 import torch
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from gcms_spectra_gnn.trainer import GCLightning
-from gcms_spectra_gnn.molecule import DEFAULT_ELEMENTS
+from gcms_spectra_gnn.transforms import DEFAULT_ELEMENTS
 
 
 def main(args):
@@ -35,7 +33,7 @@ def main(args):
         # profiler=profiler,
     )
 
-    ### CHECKPOINTS NEED FIXIN
+    # CHECKPOINTS NEED FIXIN
     # ckpt_path = os.path.join(
     #     args.output_directory,
     #     trainer.logger.name,
@@ -43,7 +41,7 @@ def main(args):
     #     "checkpoints",
     # )
     # print(f'{ckpt_path}:', ckpt_path)
-    # # initialize Model Checkpoint Saver
+    # # initialize Model Checkpoint Saver from pytorch-lightning
     # checkpoint_callback = ModelCheckpoint(
     #     filepath=ckpt_path,
     #     period=1,
@@ -65,11 +63,11 @@ def main(args):
 if __name__ == '__main__':
     # CLA INTERFACE NEEDS DEBUGGING / REFACTORING
     parser = argparse.ArgumentParser(add_help=False)
-    parser = GCLightning.add_model_specific_args(parser)
     parser.add_argument('--gpus', type=int, default=None)
     parser.add_argument('--nodes', type=int, default=1)
     parser.add_argument('--num-workers', type=int, default=1)
     # options include ddp_cpu, dp, ddp
+    parser = GCLightning.add_model_specific_args(parser)
 
     hparams = parser.parse_args()
     main(hparams)
