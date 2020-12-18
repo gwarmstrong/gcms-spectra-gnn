@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 import pytorch_lightning as pl
 import argparse
 from gcms_spectra_gnn.models import Net
@@ -13,21 +12,6 @@ from torch.utils.data import DataLoader
 
 def mse_loss(pred, spec):
     return ((pred - spec)**2).mean()
-
-
-def tag(log_dict, tag):
-    return {'/'.join([tag, key]): value for key, value in log_dict.items()}
-
-
-class MeanCosineSimilarity:
-
-    def __init__(self, cosine_kwargs=None):
-        if cosine_kwargs is None:
-            cosine_kwargs = dict()
-        self.cos = nn.CosineSimilarity(**cosine_kwargs)
-
-    def __call__(self, pred, label):
-        return self.cos(pred, label).mean()
 
 
 class GCLightning(pl.LightningModule):
@@ -50,12 +34,6 @@ class GCLightning(pl.LightningModule):
         self.input_transform = basic_dgl_transform
         self.label_transform = OneHotSpectrumEncoder()
         self.loss_fn = mse_loss
-        self.eval_metrics = [
-            ('cosine', MeanCosineSimilarity())
-        ]
-
-    def _calc_eval_metrics(self, pred, label):
-        return {key: fn(pred, label) for key, fn in self.eval_metrics}
 
     def forward(self, smiles):
         """
@@ -111,9 +89,7 @@ class GCLightning(pl.LightningModule):
         # TODO: add more metrics as needed
         # TODO: cosine similarity
         # Note that there is redundancy, which is OK
-        tensorboard_logs = {'loss': loss}
-        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
-        tensorboard_logs = tag(tensorboard_logs, 'train')
+        tensorboard_logs = {'train_loss': loss}
         return {'loss': loss, 'log': tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
@@ -122,9 +98,7 @@ class GCLightning(pl.LightningModule):
         pred = self.net(G)
         loss = self.loss_fn(pred, spec)
         # TODO: add more metrics as needed (i.e. AUPR, ...)
-        tensorboard_logs = {'loss': loss}
-        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
-        tensorboard_logs = tag(tensorboard_logs, 'val')
+        tensorboard_logs = {'valid_loss': loss}
         return {'valid_loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):

@@ -9,11 +9,7 @@ class ModelError(ValueError):
     pass
 
 
-class Model:
-    pass
-
-
-class MoleculeModel(Model):
+class MoleculeModel:
 
     def __init__(self,
                  smiles=None,
@@ -102,10 +98,11 @@ class MoleculeModel(Model):
 
         npzfile = np.load(file, allow_pickle=allow_pickle)
         return cls(
-            smiles=npzfile['smiles'].item(),
-            num_at=npzfile['num_at'].item(),
-            symbols=list(npzfile['symbols']),
-            at_nums=list(npzfile['at_nums']),
-            bonds=npzfile['bonds'],
-            data=data_fn(npzfile['data']),
+            npzfile['smiles'].item(),
+            npzfile['num_at'].item(),
+            list(npzfile['symbols']),
+            list(npzfile['at_nums']),
+            npzfile['bonds'],
+            npzfile['coords'],
+            data_fn(npzfile['data']),
         )
