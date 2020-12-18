@@ -15,6 +15,17 @@ def mse_loss(pred, spec):
     return ((pred - spec)**2).mean()
 
 
+class MeanCosineSimilarity:
+
+    def __init__(self, cosine_kwargs=None):
+        if cosine_kwargs is None:
+            cosine_kwargs = dict()
+        self.cos = nn.CosineSimilarity(**cosine_kwargs)
+
+    def __call__(self, pred, label):
+        return self.cos(pred, label).mean()
+
+
 class GCLightning(pl.LightningModule):
 
     def __init__(self, args, model_init_args):
@@ -36,7 +47,7 @@ class GCLightning(pl.LightningModule):
         self.label_transform = OneHotSpectrumEncoder()
         self.loss_fn = mse_loss
         self.eval_metrics = [
-            ('cosine', nn.CosineSimilarity())
+            ('cosine', MeanCosineSimilarity())
         ]
 
     def _calc_eval_metrics(self, pred, label):
