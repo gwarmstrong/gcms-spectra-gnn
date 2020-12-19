@@ -21,7 +21,7 @@ class Preprocessor:
         # figure out which molecules were saved
         self.saved = []
 
-    def transform(self, raw_data, raw_smiles, indices):
+    def transform(self, raw_data, raw_smiles, indices, hook):
         # Initialize new index
         # Reading raw data
         raw_mol = [safe_read_smiles(s, add_h=self.add_h) for s in
@@ -51,3 +51,6 @@ class Preprocessor:
             else:
                 self.saved.append(False)
                 print('Contains undesired elements. Excluded from dataset.')
+
+            if hook is not None:
+                hook(im, self)
