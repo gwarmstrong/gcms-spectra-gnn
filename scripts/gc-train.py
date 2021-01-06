@@ -26,7 +26,7 @@ def main(args):
         gpus=args.gpus,
         num_nodes=args.nodes,
         # check_val_every_n_epoch=1,
-        val_check_interval=0.25,
+        val_check_interval=1.0,
         # set this to true when debugging
         fast_dev_run=False,
         # auto_scale_batch_size='power',

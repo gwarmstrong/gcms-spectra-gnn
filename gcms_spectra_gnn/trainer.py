@@ -62,7 +62,7 @@ class MoleculeJSONDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         train_dataloader = DataLoader(
-            self.train_dataset, batch_size=1,
+            self.train_dataset, batch_size=self.hparams.batch_size,
             shuffle=True, num_workers=self.hparams.num_workers,
             pin_memory=True,
             collate_fn=collate_graphs,
@@ -71,7 +71,7 @@ class MoleculeJSONDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         valid_dataloader = DataLoader(
-            self.valid_dataset, batch_size=1,
+            self.valid_dataset, batch_size=self.hparams.batch_size,
             shuffle=False, num_workers=self.hparams.num_workers,
             pin_memory=True,
             collate_fn=collate_graphs,

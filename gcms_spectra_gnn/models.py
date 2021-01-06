@@ -29,14 +29,16 @@ class Net(nn.Module):
     def __init__(self, input_features, output_features, hidden_features):
         super(Net, self).__init__()
         self.layer1 = GCNLayer(input_features, hidden_features)
-        self.layer2 = GCNLayer(hidden_features, output_features)
-        self.linear_layer = nn.Linear(output_features, output_features)
+        self.layer2 = GCNLayer(hidden_features, hidden_features)
+        self.linear_layer = nn.Linear(hidden_features, output_features)
         self.agg = SumPooling()
 
     def forward(self, g):
+        # TODO this could be annoying design if passed graphs with multiple
+        #  features
         features = g.ndata['mol_ohe']
         x = F.relu(self.layer1(g, features))
-        x = self.layer2(g, x)
+        x = F.relu(self.layer2(g, x))
         x = self.agg(g, x)
         x = F.relu(self.linear_layer(x))
         return x
