@@ -30,6 +30,52 @@ class MeanCosineSimilarity:
         return self.cos(pred, label).mean()
 
 
+class MoleculeJSONDataModule(pl.LightningDataModule):
+    def __init__(self, args):
+        super(MoleculeJSONDataModule, self).__init__()
+        self.input_transform = basic_dgl_transform
+        self.label_transform = OneHotSpectrumEncoder()
+        self.hparams = args
+
+    def prepare_data(self, *args, **kwargs):
+        # TODO if needed
+        pass
+
+    def setup(self, stage=None):
+        library = JSONDirectoryBackend(self.hparams.train_library)
+        self.train_dataset = MoleculeJSONDataset(
+            library,
+            input_transform=self.input_transform,
+            label_transform=self.label_transform,
+        )
+        print("train dataset length:", len(self.train_dataset))
+        library = JSONDirectoryBackend(self.hparams.valid_library)
+        self.valid_dataset = MoleculeJSONDataset(
+            library,
+            input_transform=self.input_transform,
+            label_transform=self.label_transform,
+        )
+        print("valid dataset length:", len(self.valid_dataset))
+
+    def train_dataloader(self):
+        train_dataloader = DataLoader(
+            self.train_dataset, batch_size=1,
+            shuffle=True, num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
+        return train_dataloader
+
+    def val_dataloader(self):
+        valid_dataloader = DataLoader(
+            self.valid_dataset, batch_size=1,
+            shuffle=False, num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
+        return valid_dataloader
+
+
 class GCLightning(pl.LightningModule):
 
     def __init__(self, args, model_init_args):
@@ -41,14 +87,12 @@ class GCLightning(pl.LightningModule):
         ----------
         args : dict
             Training arguments
-        args : dict
+        model_init_args : dict
             Arguments for initializing the model.
         """
         self.hparams = args
         # TODO: how to init??
         self.net = Net(**model_init_args)
-        self.input_transform = basic_dgl_transform
-        self.label_transform = OneHotSpectrumEncoder()
         self.loss_fn = mse_loss
         self.eval_metrics = [
             ('cosine', MeanCosineSimilarity())
@@ -66,40 +110,6 @@ class GCLightning(pl.LightningModule):
         """
         # TODO: need to stub this out
         pass
-
-    def train_dataloader(self):
-        library = JSONDirectoryBackend(self.hparams.train_library)
-        train_dataset = MoleculeJSONDataset(
-            library,
-            input_transform=self.input_transform,
-            label_transform=self.label_transform,
-        )
-        print("train dataset length:", len(train_dataset))
-        assert(len(train_dataset) > 0)
-        train_dataloader = DataLoader(
-            train_dataset, batch_size=1,
-            shuffle=True, num_workers=self.hparams.num_workers,
-            pin_memory=True,
-            collate_fn=collate_graphs,
-        )
-        return train_dataloader
-
-    def val_dataloader(self):
-        library = JSONDirectoryBackend(self.hparams.valid_library)
-        valid_dataset = MoleculeJSONDataset(
-            library,
-            input_transform=self.input_transform,
-            label_transform=self.label_transform,
-        )
-        print("valid dataset length:", len(valid_dataset))
-        assert(len(valid_dataset) > 0)
-        valid_dataloader = DataLoader(
-            valid_dataset, batch_size=1,
-            shuffle=False, num_workers=self.hparams.num_workers,
-            pin_memory=True,
-            collate_fn=collate_graphs,
-        )
-        return valid_dataloader
 
     def training_step(self, batch, batch_idx):
         self.net.train()

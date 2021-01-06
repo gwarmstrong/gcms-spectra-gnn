@@ -4,7 +4,7 @@ import argparse
 
 import torch
 from pytorch_lightning import Trainer
-from gcms_spectra_gnn.trainer import GCLightning
+from gcms_spectra_gnn.trainer import GCLightning, MoleculeJSONDataModule
 from gcms_spectra_gnn.transforms import DEFAULT_ELEMENTS
 
 
@@ -49,10 +49,10 @@ def main(args):
     #     mode='min',
     #     verbose=True
     # )
-
+    molecule_dataset = MoleculeJSONDataModule(args)
     # trainer.checkpoint_callback = checkpoint_callback
     print('model', model)
-    trainer.fit(model)
+    trainer.fit(model, molecule_dataset)
     # trainer.test()
 
     # In case this doesn't checkpoint

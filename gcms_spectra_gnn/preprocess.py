@@ -21,9 +21,13 @@ class Preprocessor:
         # figure out which molecules were saved
         self.saved = []
 
-    def transform(self, raw_data, raw_smiles, indices, hook):
+    def transform(self, raw_data, raw_smiles, indices, hook=None):
         # Initialize new index
         # Reading raw data
+        # TODO getting errors that are not caught here, e.g.,
+        #  on "O=Cl(=O)(=O)F" this passes but this should give an error
+        #  with an error like:
+        #  Explicit valence for atom # 7 Br, 3, is greater than permitted
         raw_mol = [safe_read_smiles(s, add_h=self.add_h) for s in
                    raw_smiles]
         self.saved = []
