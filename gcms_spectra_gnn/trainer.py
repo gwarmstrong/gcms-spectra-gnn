@@ -21,12 +21,15 @@ def tag(log_dict, tag):
 
 class MeanCosineSimilarity:
 
-    def __init__(self, cosine_kwargs=None):
+    def __init__(self, round_preds=False, cosine_kwargs=None):
+        self.round = round_preds
         if cosine_kwargs is None:
             cosine_kwargs = dict()
         self.cos = nn.CosineSimilarity(**cosine_kwargs)
 
     def __call__(self, pred, label):
+        if self.round:
+            pred = torch.round(pred)
         return self.cos(pred, label).mean()
 
 
@@ -95,7 +98,8 @@ class GCLightning(pl.LightningModule):
         self.net = Net(**model_init_args)
         self.loss_fn = mse_loss
         self.eval_metrics = [
-            ('cosine', MeanCosineSimilarity())
+            ('cosine', MeanCosineSimilarity()),
+            ('rounded_cosine', MeanCosineSimilarity(round_preds=True))
         ]
 
     def _calc_eval_metrics(self, pred, label):
