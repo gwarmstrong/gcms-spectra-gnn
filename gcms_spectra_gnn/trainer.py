@@ -1,12 +1,82 @@
 import torch
-import torch.nn as nn
+from torch import nn
 import pytorch_lightning as pl
 import argparse
 from gcms_spectra_gnn.models import Net
-from gcms_spectra_gnn.json_dataset import MoleculeJSONDataset, collate_graphs
-from gcms_spectra_gnn.molecule import (
+from gcms_spectra_gnn.datasets import MoleculeJSONDataset
+from gcms_spectra_gnn.backend import JSONDirectoryBackend
+from gcms_spectra_gnn.transforms import collate_graphs
+from gcms_spectra_gnn.transforms import (
     basic_dgl_transform, OneHotSpectrumEncoder)
 from torch.utils.data import DataLoader
+
+
+def mse_loss(pred, spec):
+    return ((pred - spec)**2).mean()
+
+
+def tag(log_dict, tag):
+    return {'/'.join([tag, key]): value for key, value in log_dict.items()}
+
+
+class MeanCosineSimilarity:
+
+    def __init__(self, round_preds=False, cosine_kwargs=None):
+        self.round = round_preds
+        if cosine_kwargs is None:
+            cosine_kwargs = dict()
+        self.cos = nn.CosineSimilarity(**cosine_kwargs)
+
+    def __call__(self, pred, label):
+        if self.round:
+            pred = torch.round(pred)
+        return self.cos(pred, label).mean()
+
+
+class MoleculeJSONDataModule(pl.LightningDataModule):
+    def __init__(self, args):
+        super(MoleculeJSONDataModule, self).__init__()
+        self.input_transform = basic_dgl_transform
+        self.label_transform = OneHotSpectrumEncoder()
+        self.hparams = args
+
+    def prepare_data(self, *args, **kwargs):
+        # TODO if needed
+        pass
+
+    def setup(self, stage=None):
+        library = JSONDirectoryBackend(self.hparams.train_library)
+        self.train_dataset = MoleculeJSONDataset(
+            library,
+            input_transform=self.input_transform,
+            label_transform=self.label_transform,
+        )
+        print("train dataset length:", len(self.train_dataset))
+        library = JSONDirectoryBackend(self.hparams.valid_library)
+        self.valid_dataset = MoleculeJSONDataset(
+            library,
+            input_transform=self.input_transform,
+            label_transform=self.label_transform,
+        )
+        print("valid dataset length:", len(self.valid_dataset))
+
+    def train_dataloader(self):
+        train_dataloader = DataLoader(
+            self.train_dataset, batch_size=self.hparams.batch_size,
+            shuffle=True, num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
+        return train_dataloader
+
+    def val_dataloader(self):
+        valid_dataloader = DataLoader(
+            self.valid_dataset, batch_size=self.hparams.batch_size,
+            shuffle=False, num_workers=self.hparams.num_workers,
+            pin_memory=True,
+            collate_fn=collate_graphs,
+        )
+        return valid_dataloader
 
 
 class GCLightning(pl.LightningModule):
@@ -20,13 +90,20 @@ class GCLightning(pl.LightningModule):
         ----------
         args : dict
             Training arguments
-        args : dict
+        model_init_args : dict
             Arguments for initializing the model.
         """
         self.hparams = args
         # TODO: how to init??
         self.net = Net(**model_init_args)
-        self.label_transform = OneHotSpectrumEncoder()
+        self.loss_fn = mse_loss
+        self.eval_metrics = [
+            ('cosine', MeanCosineSimilarity()),
+            ('rounded_cosine', MeanCosineSimilarity(round_preds=True))
+        ]
+
+    def _calc_eval_metrics(self, pred, label):
+        return {key: fn(pred, label) for key, fn in self.eval_metrics}
 
     def forward(self, smiles):
         """
@@ -38,55 +115,30 @@ class GCLightning(pl.LightningModule):
         # TODO: need to stub this out
         pass
 
-    def train_dataloader(self):
-        train_dataset = MoleculeJSONDataset(
-            self.hparams.train_library,
-            graph_transform=basic_dgl_transform,
-            label_transform=self.label_transform)
-        print("train dataset length:", len(train_dataset))
-        assert(len(train_dataset) > 0)
-        train_dataloader = DataLoader(
-            train_dataset, batch_size=1,
-            shuffle=True, num_workers=self.hparams.num_workers,
-            pin_memory=True,
-            collate_fn=collate_graphs,
-        )
-        return train_dataloader
-
-    def val_dataloader(self):
-        valid_dataset = MoleculeJSONDataset(
-            self.hparams.valid_library,
-            graph_transform=basic_dgl_transform,
-            label_transform=self.label_transform)
-        print("valid dataset length:", len(valid_dataset))
-        assert(len(valid_dataset) > 0)
-        valid_dataloader = DataLoader(
-            valid_dataset, batch_size=1,
-            shuffle=True, num_workers=self.hparams.num_workers,
-            pin_memory=True,
-            collate_fn=collate_graphs,
-        )
-        return valid_dataloader
-
     def training_step(self, batch, batch_idx):
         self.net.train()
         G, spec = batch
         # TODO: push data to GPU
-        pred = self.net(G, G.ndata['mol_ohe'])
-        #loss = nn.MSELoss(pred, spec)
-        loss = ((pred - spec)**2).mean()
+        pred = self.net(G)
+        # loss = nn.MSELoss(pred, spec)
+        loss = self.loss_fn(pred, spec)
         # TODO: add more metrics as needed
+        # TODO: cosine similarity
         # Note that there is redundancy, which is OK
-        tensorboard_logs = {'train_loss': loss}
+        tensorboard_logs = {'loss': loss}
+        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
+        tensorboard_logs = tag(tensorboard_logs, 'train')
         return {'loss': loss, 'log': tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
         G, spec = batch
         # TODO: push data to GPU
-        pred = self.net(G, G.ndata['mol_ohe'])
-        loss = ((pred - spec)**2).mean()
+        pred = self.net(G)
+        loss = self.loss_fn(pred, spec)
         # TODO: add more metrics as needed (i.e. AUPR, ...)
-        tensorboard_logs = {'valid_loss': loss}
+        tensorboard_logs = {'loss': loss}
+        tensorboard_logs.update(self._calc_eval_metrics(pred, spec))
+        tensorboard_logs = tag(tensorboard_logs, 'val')
         return {'valid_loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
@@ -96,7 +148,7 @@ class GCLightning(pl.LightningModule):
 
     @staticmethod
     def add_model_specific_args(parent_parser):
-        parser = argparse.ArgumentParser(parent_parser)
+        parser = argparse.ArgumentParser(parents=[parent_parser])
         parser.add_argument(
             '--train-library', help='Training library file',
             required=True)

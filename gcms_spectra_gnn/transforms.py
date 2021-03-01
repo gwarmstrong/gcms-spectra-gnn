@@ -12,7 +12,7 @@ def basic_dgl_transform(model):
     # TODO figure out some features!
     G.ndata['mol_ohe'] = ohe_molecules(model.symbols)
     return G
-        
+
 
 def ohe_molecules(symbols, elements=None):
     # TODO this might error if we get something not in elements
@@ -65,3 +65,11 @@ class OneHotSpectrumEncoder:
             if (idx >= self.min_) and (idx <= self.max_):
                 y[0, idx - self.min_] = model.data[1, i]
         return torch.tensor(y)
+
+
+def collate_graphs(samples):
+    # The input `samples` is a list of pairs
+    #  (graph, label).
+    graphs, labels = map(list, zip(*samples))
+    batched_graph = dgl.batch(graphs)
+    return batched_graph, torch.cat(labels)
