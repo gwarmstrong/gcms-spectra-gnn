@@ -10,8 +10,7 @@ class SklearnTrainer:
         dataset.setup()
         training_data = dataset.train_dataset
 
-        samples = [model_to_morgan_fingerprint(training_data[i])
-                   for i in range(len(training_data))]
+        samples = [training_data[i] for i in range(len(training_data))]
 
         X, y = dataset.collate_fn(samples)
 
