@@ -25,7 +25,7 @@ def model_to_morgan_fingerprint(model):
     )
     arr = np.zeros(N_BITS, dtype=np.int8)
     DataStructs.ConvertToNumpyArray(fingerprint, arr)
-    return torch.tensor(arr).float()
+    return torch.tensor(arr).reshape(1, -1).float()
 
 
 def collate_arrays(samples):
