@@ -38,6 +38,7 @@ class MoleculeJSONDataModule(pl.LightningDataModule):
         super(MoleculeJSONDataModule, self).__init__()
         self.input_transform = basic_dgl_transform
         self.label_transform = OneHotSpectrumEncoder()
+        self.collate_fn = collate_graphs
         self.hparams = args
 
     def prepare_data(self, *args, **kwargs):
@@ -65,7 +66,7 @@ class MoleculeJSONDataModule(pl.LightningDataModule):
             self.train_dataset, batch_size=self.hparams.batch_size,
             shuffle=True, num_workers=self.hparams.num_workers,
             pin_memory=True,
-            collate_fn=collate_graphs,
+            collate_fn=self.collate_fn,
         )
         return train_dataloader
 
@@ -74,7 +75,7 @@ class MoleculeJSONDataModule(pl.LightningDataModule):
             self.valid_dataset, batch_size=self.hparams.batch_size,
             shuffle=False, num_workers=self.hparams.num_workers,
             pin_memory=True,
-            collate_fn=collate_graphs,
+            collate_fn=self.collate_fn,
         )
         return valid_dataloader
 

@@ -33,27 +33,9 @@ def main(args):
         # profiler=profiler,
     )
 
-    # CHECKPOINTS NEED FIXIN
-    # ckpt_path = os.path.join(
-    #     args.output_directory,
-    #     trainer.logger.name,
-    #     f"version_{trainer.logger.version}",
-    #     "checkpoints",
-    # )
-    # print(f'{ckpt_path}:', ckpt_path)
-    # # initialize Model Checkpoint Saver from pytorch-lightning
-    # checkpoint_callback = ModelCheckpoint(
-    #     filepath=ckpt_path,
-    #     period=1,
-    #     monitor='valid_loss',
-    #     mode='min',
-    #     verbose=True
-    # )
     molecule_dataset = MoleculeJSONDataModule(args)
-    # trainer.checkpoint_callback = checkpoint_callback
     print('model', model)
     trainer.fit(model, molecule_dataset)
-    # trainer.test()
 
     # In case this doesn't checkpoint
     torch.save(model.state_dict(),
