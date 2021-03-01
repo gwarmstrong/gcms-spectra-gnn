@@ -3,6 +3,7 @@ import numpy as np
 from rdkit import Chem
 
 from gcms_spectra_gnn.util import read_smiles, valid_elements, get_bonds_matrix
+from gcms_spectra_gnn.tabular import mol_to_morgan_fingerprint
 
 
 class ModelError(ValueError):
@@ -24,6 +25,7 @@ class MoleculeModel(Model):
                  bonds=None,
                  data=None,
                  mol=None,
+                 fingerprint=None,
                  **kwargs
                  ):
         # Append the SMILES
@@ -40,6 +42,7 @@ class MoleculeModel(Model):
         # TODO this is where spectra should be stored
         self.data = data
         self.mol = mol
+        self.fingerprint: List[int] = fingerprint
 
     def to_safe_dict(self):
         return {
@@ -50,6 +53,7 @@ class MoleculeModel(Model):
             'at_nums': self.at_nums,
             'bonds': self.bonds,
             'data': self.data,
+            'fingerprint': self.fingerprint,
         }
 
     def save(self, file):
@@ -75,6 +79,7 @@ class MoleculeModel(Model):
         # Read all atom names and numbers
         new_symbols = [a.GetSymbol() for a in m.GetAtoms()]
         new_at_nums = [a.GetAtomicNum() for a in m.GetAtoms()]
+        fingerprint = mol_to_morgan_fingerprint(m)
 
         # Check for undesired elements
         if valid_elements(new_symbols, elements):
@@ -89,6 +94,7 @@ class MoleculeModel(Model):
                 bonds=conmat,
                 data=raw_data,
                 mol=m,
+                fingerprint=fingerprint,
             )
             return model
 
@@ -107,5 +113,6 @@ class MoleculeModel(Model):
             symbols=list(npzfile['symbols']),
             at_nums=list(npzfile['at_nums']),
             bonds=npzfile['bonds'],
+            fingerprint=npzfile['fingerprint'],
             data=data_fn(npzfile['data']),
         )

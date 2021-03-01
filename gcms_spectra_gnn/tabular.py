@@ -17,15 +17,24 @@ class SklearnTrainer:
         model.fit(X, y)
 
 
-def model_to_morgan_fingerprint(model):
-    N_BITS = 1024
+def model_to_morgan_fingerprint(model, n_bits=1024):
     mol = Chem.MolFromSmiles(model.smiles)
-    fingerprint = AllChem.GetMorganFingerprintAsBitVect(
-       mol, 2, nBits=N_BITS,
-    )
-    arr = np.zeros(N_BITS, dtype=np.int8)
-    DataStructs.ConvertToNumpyArray(fingerprint, arr)
+    arr = _fingerprint(mol, n_bits)
     return torch.tensor(arr).reshape(1, -1).float()
+
+
+def mol_to_morgan_fingerprint(mol, n_bits=1024):
+    arr = _fingerprint(mol, n_bits)
+    return arr.tolist()
+
+
+def _fingerprint(mol, n_bits):
+    fingerprint = AllChem.GetMorganFingerprintAsBitVect(
+        mol, 2, nBits=n_bits,
+    )
+    arr = np.zeros(n_bits, dtype=np.int8)
+    DataStructs.ConvertToNumpyArray(fingerprint, arr)
+    return arr
 
 
 def collate_arrays(samples):
