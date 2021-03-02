@@ -1,6 +1,5 @@
 ﻿from gcms_spectra_gnn.data_models import MoleculeModel
-from gcms_spectra_gnn.util import safe_read_smiles
-
+from gcms_spectra_gnn.util import safe_read_smiles, SmilesException
 
 class Preprocessor:
     def __init__(self,
@@ -41,12 +40,16 @@ class Preprocessor:
                 self.saved.append(False)
                 continue
 
-            model = MoleculeModel.from_raw_smiles(
-                raw_smiles=raw_smiles[im],
-                raw_data=raw_data[im],
-                add_h=self.add_h,
-                elements=self.elements,
-            )
+            model = False
+            try:
+                model = MoleculeModel.from_raw_smiles(
+                    raw_smiles=raw_smiles[im],
+                    raw_data=raw_data[im],
+                    add_h=self.add_h,
+                    elements=self.elements,
+                )
+            except SmilesException:
+                pass
             if model:
                 # Append the molecule
                 print('Added to the dataset.')
